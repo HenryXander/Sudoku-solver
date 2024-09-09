@@ -1,4 +1,4 @@
-from .backtrack_search import backtracking_search_CSP as bts
+from backtrack_search import backtracking_search_CSP as bts
 from CSP import CSP
 from itertools import product
 import pygame
