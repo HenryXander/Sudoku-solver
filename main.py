@@ -1,176 +1,118 @@
-import random
-import copy as cpy
-import math
-import statistics
+from .backtrack_search import backtracking_search_CSP as bts
+from CSP import CSP
+from itertools import product
+import pygame
+import sys
 
-def printSudoku(sudoku):
-    for i in range(0, 9, 1):
-        selectedIndex = i - i % 3
-        index = i%3
-        index *= 3
-        for j in range(0, 3, 1):
-            selected = sudoku[selectedIndex + j]
-            for k in range(0, 3, 1):
-                print(selected[index + k], end = ' ')
-            if (j != 2):
-                print("|", end=' ')
-        print()
-        if (i == 2 or i == 5):
-            print("---------------------")
 
-def getFixed(sudoku):
-    fixed = [[0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0]]
-    for i in range(0, 9, 1):
-        for j in range(0, 9, 1):
-            if sudoku[i][j] != 0:
-                fixed[i][j] = 1
-    return fixed
+pygame.init()
 
-def fillSudoku(sudoku):
-    for i in range(0, 9, 1):
-        selected = sudoku[i]
-        free = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-        for j in range(0, 9, 1):
-            if selected[j] != 0:
-                free.remove(selected[j])
-        length = len(free) - 1
-        for j in range(0, 9, 1):
-            if selected[j] == 0:
-                index = random.randint(0, length)
-                selected[j] = free[index]
-                free.remove(free[index])
-                length -= 1
+WIDTH, HEIGHT = 540, 600
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GRAY = (200, 200, 200)
+FPS = 60
 
-def heuristic(sudoku):
-    cost = 0
-    for i in range(0, 9, 1):
-        row = getRow(sudoku, i)
-        column = getColumn(sudoku, i)
-        takenRow = []
-        takenColumn = []
-        for j in range(0, 9, 1):
-            if row[j] in takenRow:
-                cost += 1
-            else:
-                takenRow.append(row[j])
-            if column[j] in takenColumn:
-                cost += 1
-            else:
-                takenColumn.append(column[j])
-    return cost
 
-def getRow(sudoku, index):
-    row = []
-    selectedIndex = index - index%3
-    index %= 3
-    index *= 3
-    for j in range(0, 3, 1):
-        selected = sudoku[selectedIndex + j]
-        for k in range(0, 3, 1):
-            row.append(selected[index + k])
-    return row
-def getColumn(sudoku, index):
-    column = []
-    selectedIndex = int(index/3)
-    index %= 3
-    for j in range(0, 7, 3):
-        selected = sudoku[selectedIndex + j]
-        for k in range(0, 7, 3):
-            column.append(selected[index + k])
-    return column
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Sudoku Solver")
 
-def newSudoku(sudoku, fixed):
-    sudokuNew = cpy.deepcopy(sudoku)
-    block = random.randint(0, 8)
-    selected = sudokuNew[block]
-    flip(selected, fixed[block])
-    return sudokuNew
+font = pygame.font.SysFont("comicsans", 40)
 
-def flip(block, fixed):
-    free = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-    for i in range(0, 9, 1):
-        if fixed[i] == 1:
-            free.remove(i)
-    index1 = free[random.randint(0, len(free) - 1)]
-    free.remove(index1)
-    index2 = free[random.randint(0, len(free) - 1)]
 
-    hulp = block[index1]
-    block[index1] = block[index2]
-    block[index2] = hulp
-
-def chooseSudoku(sudoku, newSudoku, temp):
-    precost = heuristic(sudoku)
-    postcost = heuristic(newSudoku)
-
-    delta = postcost - precost
-    P = math.exp(-delta/temp)
-    if (random.random() <= P):
-        return newSudoku
-    return sudoku
-
-def numberIterations(fixed):
-    numberIterations = 0
-    for i in range(0, 9, 1):
-        for j in range(0, 9, 1):
-            if fixed[i][j] != 0:
-                numberIterations += 1
-    return numberIterations
-
-def initialTemp(sudoku, fixed):
-    costs = []
-    for i in range(0, 10, 1):
-        temporarySudoku = newSudoku(sudoku, fixed)
-        costs.append(heuristic(temporarySudoku))
-    initial = statistics.pstdev(costs)
-    return initial
-
-def solve(sudoku):
-    fixed = getFixed(sudoku)
-    fillSudoku(sudoku)
-    temp = initialTemp(sudoku, fixed)
-    iterations = numberIterations(fixed)
-    coolingFactor = 0.99
-    stuckCount = 0
-    cost = heuristic(sudoku)
-    if cost == 0:
-        return True
-
-    succes = False
-
-    while succes == False:
-        previousCost = cost
-        for i in range(0, iterations, 1):
-            newsudoku = newSudoku(sudoku, fixed)
-            sudoku = chooseSudoku(sudoku, newsudoku, temp)
-            cost = heuristic(sudoku)
-            if cost == 0:
-                succes = True
-                break
-        temp *= coolingFactor
-
-        if cost >= previousCost:
-            stuckCount += 1
+def draw_board(board):
+    screen.fill(WHITE)
+    for i in range(10):
+        if i % 3 == 0:
+            thick = 4
         else:
-            stuckCount = 0
+            thick = 1
+        pygame.draw.line(screen, BLACK, (60 * i, 0), (60 * i, 540), thick)
+        pygame.draw.line(screen, BLACK, (0, 60 * i), (540, 60 * i), thick)
 
-        if stuckCount > 80:
-            temp *= 2
-    return sudoku
+    for i in range(9):
+        for j in range(9):
+            num = board[i][j]
+            if num != 0:
+                text = font.render(str(num), True, BLACK)
+                screen.blit(text, (j * 60 + 20, i * 60 + 10))
 
+    pygame.display.flip()
 
+def solve_sudoku(csp, board):
+    result = bts(csp, "pc2")
+    if result == "Failure":
+        return board
+    else:
+        for var, value in result.items():
+            i = int(var[0])
+            j = int(var[1])
+
+            board[i][j] = value
+        return board
+
+def get_constraints():
+    constraints = {}
+    for i, j in product(range(9), repeat=2):
+        var1 = f"{i}{j}"
+        row_neighbors = [f"{i}{col}" for col in range(9) if col != j]
+        col_neighbors = [f"{row}{j}" for row in range(9) if row != i]
+        box_neighbors = [f"{row}{col}" for row in range(i - i % 3, i - i % 3 + 3) for col in
+                         range(j - j % 3, j - j % 3 + 3) if (row, col) != (i, j)]
+
+        all_neighbors = row_neighbors + col_neighbors + box_neighbors
+        constraints[var1] = all_neighbors
+
+    binary_constraints = {}
+
+    def is_different(values):
+        value_1 = values[0]
+        value_2 = values[1]
+        return value_1 != value_2
+
+    for main_box, constraint in constraints.items():
+        for box in constraint:
+            binary_constraint_id = (main_box, box)
+            new_binary_constraint = {
+                binary_constraint_id: is_different
+            }
+            binary_constraints = binary_constraints | new_binary_constraint
+    return binary_constraints
+
+def initialize_CSP(initial_board):
+    variables = [f"{i}{j}" for i, j in product(range(9), repeat=2)]
+    domains = {var: list(range(1, 10)) if initial_board[i][j] == 0 else [initial_board[i][j]] for var, (i, j) in zip(variables, product(range(9), repeat=2))}
+    constraints = get_constraints()
+    csp = CSP(variables, domains, constraints)
+    return csp
 
 def main():
-    sudoku =    [[0, 9, 0, 2, 0, 8, 7, 0, 3], [0, 0, 2, 0, 4, 0, 1, 0, 6], [0, 1, 0, 9, 3, 0, 8, 0, 0],
-                [0, 0, 0, 1, 8, 5, 0, 7, 4], [3, 0, 0, 0, 2, 9, 0, 0, 1], [1, 4, 5, 6, 0, 0, 2, 0, 8],
-                [0, 0, 0, 5, 0, 0, 8, 0, 0], [2, 0, 0, 9, 0, 0, 6, 0, 3], [0, 8, 0, 7, 6, 2, 0, 0, 0]]
-    printSudoku(sudoku)
-    print("\n")
-    print("\n")
-    print("\n")
-    opl = solve(sudoku)
-    printSudoku(opl)
+    board = [
+        [5, 3, 0, 0, 7, 0, 0, 0, 0],
+        [6, 0, 0, 1, 9, 5, 0, 0, 0],
+        [0, 9, 8, 0, 0, 0, 0, 6, 0],
+        [8, 0, 0, 0, 6, 0, 0, 0, 3],
+        [4, 0, 0, 8, 0, 3, 0, 0, 1],
+        [7, 0, 0, 0, 2, 0, 0, 0, 6],
+        [0, 6, 0, 0, 0, 0, 2, 8, 0],
+        [0, 0, 0, 4, 1, 9, 0, 0, 5],
+        [0, 0, 0, 0, 8, 0, 0, 7, 9]
+    ]
 
-main()
+    draw_board(board)
+    running = True
+    csp = initialize_CSP(board)
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE:
+                        print("thinking...")
+                        solve_sudoku(csp, board)
+                        draw_board(board)
+        draw_board(board)
+
+if __name__ == "__main__":
+    main()
